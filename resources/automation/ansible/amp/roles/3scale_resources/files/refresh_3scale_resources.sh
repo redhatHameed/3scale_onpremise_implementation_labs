@@ -133,7 +133,7 @@ function test() {
 
 echo args = $@
 
-export API_RESPONSE_DIR=/tmp/amp_api_responses
+export API_RESPONSE_DIR=/home/ahameed/dev/temp
 export LOG_FILE=$API_RESPONSE_DIR/refresh_3scale_resources.log
 
 while true; do

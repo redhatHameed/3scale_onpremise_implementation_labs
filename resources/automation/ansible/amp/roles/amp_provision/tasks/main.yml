@@ -18,6 +18,7 @@
   command: oc new-project "{{ threescale_project }}"
   when: '"projects/" ~ threescale_project not in oc_get_projects.stdout_lines'
   tags: project
+  ignore_errors: yes
 
 - name: Download {{ threescale_template }}
   get_url:
@@ -27,12 +28,12 @@
   tags: template
 
 - name: Process the OpenShift Template and create the OpenShift objects for the 3scale API Management Platform
-  shell: oc process -f "{{ modified_template_path }}" -p "MASTER_NAME={{OCP_PROJECT_PREFIX}}-master" -p "MASTER_PASSWORD={{master_passwd}}" -p "MASTER_ACCESS_TOKEN={{master_access_token}}" -p "TENANT_NAME={{ threescale_tenant_name }}" -p "WILDCARD_DOMAIN={{ threescale_wildcard_domain }}" -p "ADMIN_PASSWORD={{ amp_admin_passwd }}" -n "{{ threescale_project }}" | oc create -f - -n "{{ threescale_project }}"
+  shell: oc process -f "{{ modified_template_path }}" -p "MASTER_NAME={{OCP_PROJECT_PREFIX}}-master"   -p "TENANT_NAME={{ threescale_tenant_name }}" -p "WILDCARD_DOMAIN={{ threescale_wildcard_domain }}" -p "ADMIN_PASSWORD={{ amp_admin_passwd }}" -n "{{ threescale_project }}" | oc create -f - -n "{{ threescale_project }}"
   register: oc
   failed_when: oc.rc > 0 and 'Error from server (AlreadyExists):' not in oc.stderr
   changed_when: oc.rc == 0
   tags: template
-
+  ignore_errors: yes
 - include: status.yml
 
 
@@ -41,16 +42,6 @@
 
 
 #########################           AMP Storage Tier        #####################################
-- name: "Resume {{with_items}}"
-  command: oc rollout resume dc/"{{ item }}" -n "{{ threescale_project }}"
-  with_items:
-    - backend-redis
-    - system-memcache
-    - system-mysql
-    - system-redis
-    - zync-database
-  tags: amp_rollout
-  
 - include: wait_for.yml
   static: no
   vars:
@@ -62,14 +53,9 @@
       - zync-database
   tags: status
 
-- name: "Resume {{with_items}}"
-  command: oc rollout resume dc/"{{ item }}" -n "{{ threescale_project }}"
-  with_items:
-    - backend-listener
-    - backend-worker
-  tags: amp_rollout
 - include: wait_for.yml
   static: no
+ 
   vars:
     pod_to_wait:
       - backend-listener
@@ -82,18 +68,8 @@
 
 
 
-
-
-
-
-
 #########################           AMP System Tier        #####################################
 
-- name: "Resume {{with_items}}"
-  command: oc rollout resume dc/"{{ item }}" -n "{{ threescale_project }}"
-  with_items:
-    - system-app
-  tags: amp_rollout
 
 - include: wait_for.yml
   static: no
@@ -102,14 +78,6 @@
       - system-app
   tags: status
 
-- name: "Resume {{with_items}}"
-  command: oc rollout resume dc/"{{ item }}" -n "{{ threescale_project }}"
-  with_items:
-    - system-resque
-    - system-sidekiq
-    - backend-cron
-    - system-sphinx
-  tags: amp_rollout
 
 - include: wait_for.yml
   static: no
@@ -128,25 +96,16 @@
 - name: Setting debug log level for both production and staging apicast
   command: oc patch dc/apicast-staging --patch '{"spec":{"template":{"spec":{"containers":[{"name":"apicast-staging", "env":[{"name":"APICAST_LOG_LEVEL","value":"debug" }] }]}}}}'
   tags: setup
+  ignore_errors: yes
 - command: oc patch dc/apicast-production --patch '{"spec":{"template":{"spec":{"containers":[{"name":"apicast-production", "env":[{"name":"APICAST_LOG_LEVEL","value":"debug" }] }]}}}}'
   tags: setup
+  ignore_errors: yes
 - command: oc patch dc/apicast-production --patch '{"spec":{"template":{"spec":{"containers":[{"name":"apicast-production", "env":[{"name":"APICAST_CONFIGURATION_LOADER","value":"lazy" }] }]}}}}'
   tags: setup
+  ignore_errors: yes
 
-- name: "Resume {{with_items}}"
-  command: oc rollout resume dc/"{{ item }}" -n "{{ threescale_project }}"
-  with_items:
-    - apicast-staging
-    - apicast-production
-  tags: amp_rollout
 
-- include: wait_for.yml
-  static: no
-  vars:
-    pod_to_wait:
-      - apicast-staging
-      - apicast-production
-  tags: status
+
 
 
 #####################           Routes          #################################
@@ -154,15 +113,7 @@
 - include: status.yml
   static: no
 
-- name: Delete generic apicast routes
-  command: oc delete route "{{ item }}" -n "{{ threescale_project }}"
-  with_items:
-    - api-apicast-staging-route
-    - api-apicast-production-route
-    - "{{ vertx_stage_route.routename }}"
-    - "{{ vertx_prod_route.routename }}"
-  when: item in routes
-  tags: amp_rollout
+
 
 - name: Replace generic stage apicast routes with new routes whose name is more specific to our backend service
   command: oc create route edge {{ item }} --service=apicast-staging --hostname="{{ vertx_stage_route.hostname }}" -n "{{ threescale_project }}"

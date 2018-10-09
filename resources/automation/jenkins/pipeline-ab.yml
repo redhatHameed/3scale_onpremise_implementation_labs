@@ -19,7 +19,7 @@ spec:
     jenkinsPipelineStrategy:
       env:
         - name: "threescaleurl"
-          value: ""
+          value: "https://ah-3scale-ansible-admin.app.rhdp.ocp.cloud.lab.eng.bos.redhat.com"
         - name: "uatnamespace"
           value: ""
         - name: "image_url_base"
@@ -37,7 +37,7 @@ spec:
           value: "1.1"
       jenkinsfile: |-
         node('maven') {
-            env.apiaccesstoken = "143d1a90ea5d369a88ec35310f06b86fec8569a1c34c21eaffc9f9906947962a";    
+            env.apiaccesstoken = "f1d375df8e318086499fe8b8a06827d75e5a4592d25fc3088f2fd7d86b035e46";    
             env.appplanid = "2357355891901";
             env.metricsid = "2555417998898";
             env.ablimit = 25;
